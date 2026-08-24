@@ -1,0 +1,95 @@
+{
+  "services": [
+    {
+      "service_code": "FACTORY_REG",
+      "label": "Factory Registration",
+      "category": "industrial",
+      "audience": "business_owner",
+      "dept": "Directorate of Industrial Safety and Health",
+      "sla_days": 15,
+      "keywords": ["factory", "unit", "manufacturing", "plant", "workers"],
+      "required_docs": [
+        {"doc_type": "pan", "label": "PAN card"},
+        {"doc_type": "udyam", "label": "Udyam registration"},
+        {"doc_type": "site_plan", "label": "Site plan"},
+        {"doc_type": "ca_certificate", "label": "CA investment certificate"},
+        {"doc_type": "fire_noc", "label": "Fire NOC"}
+      ],
+      "rules": [
+        {"id": "R1", "field": "workers", "op": ">=", "value": 10,
+         "message": "Factory registration applies to units with 10 or more workers"}
+      ]
+    },
+    {
+      "service_code": "POLLUTION_CTE",
+      "label": "Consent to Establish",
+      "category": "industrial",
+      "audience": "business_owner",
+      "dept": "Maharashtra Pollution Control Board",
+      "sla_days": 15,
+      "keywords": ["pollution", "effluent", "consent", "environment"],
+      "required_docs": [
+        {"doc_type": "site_plan", "label": "Site plan"},
+        {"doc_type": "effluent_plan", "label": "Effluent treatment plan"}
+      ],
+      "rules": []
+    },
+    {
+      "service_code": "POST_MATRIC_SCHOLARSHIP",
+      "label": "Post-Matric Scholarship",
+      "category": "education",
+      "audience": "student",
+      "dept": "Directorate of Higher Education",
+      "sla_days": 30,
+      "keywords": ["scholarship", "student", "college", "fees", "study"],
+      "required_docs": [
+        {"doc_type": "aadhaar", "label": "Aadhaar card"},
+        {"doc_type": "income_certificate", "label": "Income certificate"},
+        {"doc_type": "college_id", "label": "College ID / bonafide"},
+        {"doc_type": "marksheet", "label": "Previous year marksheet"}
+      ],
+      "rules": [
+        {"id": "R1", "field": "annual_income", "op": "<=", "value": 250000,
+         "message": "Family annual income must be 2.5 lakh or below"},
+        {"id": "R2", "field": "is_enrolled", "op": "==", "value": true,
+         "message": "You must be currently enrolled in a recognised institution"}
+      ]
+    },
+    {
+      "service_code": "DOMICILE_CERT",
+      "label": "Domicile Certificate",
+      "category": "citizen_services",
+      "audience": "citizen",
+      "dept": "Revenue Department",
+      "sla_days": 21,
+      "keywords": ["domicile", "residence", "certificate", "resident"],
+      "required_docs": [
+        {"doc_type": "aadhaar", "label": "Aadhaar card"},
+        {"doc_type": "residence_proof", "label": "Residence proof"},
+        {"doc_type": "ration_card", "label": "Ration card"}
+      ],
+      "rules": [
+        {"id": "R1", "field": "years_in_state", "op": ">=", "value": 15,
+         "message": "You must have resided in the state for at least 15 years"}
+      ]
+    },
+    {
+      "service_code": "FARM_SUBSIDY",
+      "label": "Agricultural Equipment Subsidy",
+      "category": "agriculture",
+      "audience": "farmer",
+      "dept": "Department of Agriculture",
+      "sla_days": 45,
+      "keywords": ["farmer", "subsidy", "crop", "irrigation", "tractor", "land"],
+      "required_docs": [
+        {"doc_type": "aadhaar", "label": "Aadhaar card"},
+        {"doc_type": "land_record", "label": "7/12 land record"},
+        {"doc_type": "bank_passbook", "label": "Bank passbook"}
+      ],
+      "rules": [
+        {"id": "R1", "field": "land_hectares", "op": "<=", "value": 2,
+         "message": "This subsidy is for small and marginal farmers (up to 2 hectares)"}
+      ]
+    }
+  ]
+}
