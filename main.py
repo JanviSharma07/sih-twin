@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 import config
 import rulebook
-
+from fastapi import FastAPI, HTTPException
 app = FastAPI(
     title=f"{config.APP_NAME} API",
     description=config.APP_DESCRIPTION,
@@ -68,6 +68,20 @@ def match_service(body: MatchRequest):
 
 @app.get("/api/services")
 def list_services(category: str | None = None, audience: str | None = None):
+    valid_categories = {s["category"] for s in rulebook.SERVICES}
+    valid_audiences = {s["audience"] for s in rulebook.SERVICES}
+
+    if category and category not in valid_categories:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown category '{category}'. Valid: {sorted(valid_categories)}",
+        )
+    if audience and audience not in valid_audiences:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown audience '{audience}'. Valid: {sorted(valid_audiences)}",
+        )
+
     result = rulebook.SERVICES
     if category:
         result = [s for s in result if s["category"] == category]
