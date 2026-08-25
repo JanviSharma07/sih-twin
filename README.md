@@ -32,3 +32,38 @@ Base URL: `http://127.0.0.1:8000`
 The twin structure is defined in `schemas.py`; that file is the contract.
 
 CORS is open, so the React dev server can call this directly.
+
+
+
+# Niyora Frontend
+
+React + Vite frontend for the SIH 26130 Citizen Application Digital Twin backend.
+
+## Run
+```bash
+npm install
+npm run dev
+```
+
+The default API is `https://sih-twin.onrender.com`.
+To override it, create `.env`:
+
+```env
+VITE_API_URL=https://sih-twin.onrender.com
+```
+
+## Backend endpoints used
+- GET `/api/services`
+- POST `/api/match-service`
+- POST `/api/eligibility`
+- POST `/api/applications`
+- GET `/api/twin/{twin_id}`
+- GET `/api/queue`
+- POST `/api/applications/{twin_id}/decision`
+- GET `/api/analytics/bottlenecks`
+
+The UI has two modes:
+- Applicant: discover services, eligibility, start applications, track the Digital Twin.
+- Officer: work queue, risk prioritization, decisions, bottleneck analytics.
+
+The current backend returns sample data, so the frontend intentionally renders the contract rather than inventing a different API.
