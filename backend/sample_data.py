@@ -108,3 +108,32 @@ SAMPLE_BOTTLENECKS = {
         {"doc_type": "ca_certificate", "rejection_rate": 0.22},
     ],
 }
+SAMPLE_NOTIFICATIONS = [
+    {
+        "id": "N1",
+        "level": "action",
+        "title": "Fire NOC missing",
+        "message": "Upload the Fire NOC to reach 100% readiness",
+        "twin_id": "APP-2026-000417",
+        "read": False,
+        "at": "2026-08-26T09:15:00",
+    },
+    {
+        "id": "N2",
+        "level": "warning",
+        "title": "Delay risk is high",
+        "message": "Pollution Board is clearing files slower than usual this month",
+        "twin_id": "APP-2026-000417",
+        "read": False,
+        "at": "2026-08-25T16:40:00",
+    },
+    {
+        "id": "N3",
+        "level": "info",
+        "title": "Labour Department approved",
+        "message": "Stage 1 cleared in 6 of 10 allowed days",
+        "twin_id": "APP-2026-000417",
+        "read": True,
+        "at": "2026-08-16T09:05:00",
+    },
+]
