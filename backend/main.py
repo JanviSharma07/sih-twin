@@ -1,7 +1,11 @@
 from fastapi import FastAPI
-
+import auth
+from fastapi import Depends
 import config
 import rulebook
+from sample_data import (SAMPLE_TWIN, SAMPLE_SERVICES, SAMPLE_QUEUE,
+                         SAMPLE_BOTTLENECKS, SAMPLE_NOTIFICATIONS)
+
 from fastapi import FastAPI, HTTPException
 app = FastAPI(
     title=f"{config.APP_NAME} API",
@@ -17,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {
         "app": config.APP_NAME,
@@ -108,15 +112,49 @@ def get_twin(twin_id: str):
 # ---------- officer side ----------
 
 @app.get("/api/queue")
-def officer_queue():
+def officer_queue(user: dict = Depends(auth.officer_only)):
     return sorted(SAMPLE_QUEUE, key=lambda f: f["delay_probability"], reverse=True)
 
 
 @app.post("/api/applications/{twin_id}/decision")
-def record_decision(twin_id: str, body: DecisionRequest):
-    return {"twin_id": twin_id, "decision": body.action, "reason": body.reason}
+def record_decision(twin_id: str, body: DecisionRequest,
+                    user: dict = Depends(auth.officer_only)):
+    return {"twin_id": twin_id, "decision": body.action,
+            "reason": body.reason, "by": user["email"]}
 
 
 @app.get("/api/analytics/bottlenecks")
-def bottlenecks():
+def bottlenecks(user: dict = Depends(auth.officer_only)):
     return SAMPLE_BOTTLENECKS
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str = "applicant"
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/auth/register")
+def register(body: RegisterRequest):
+    user = auth.create_user(body.name, body.email, body.password, body.role)
+    return {"user": user, "token": auth.make_token(user)}
+
+
+@app.post("/api/auth/login")
+def login(body: LoginRequest):
+    user = auth.authenticate(body.email, body.password)
+    return {"user": user, "token": auth.make_token(user)}
+
+
+@app.get("/api/auth/me")
+def me(user: dict = Depends(auth.current_user)):
+    return user
+@app.get("/api/notifications")
+def notifications(user: dict = Depends(auth.current_user)):
+    items = sorted(SAMPLE_NOTIFICATIONS, key=lambda n: n["at"], reverse=True)
+    return {"unread": sum(1 for n in items if not n["read"]), "items": items}

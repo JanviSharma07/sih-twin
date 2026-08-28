@@ -1,17 +1,42 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const API = import.meta.env.VITE_API_URL || "https://sih-twin.onrender.com";
 
+const auth = {
+  get token() { return localStorage.getItem("niyora_token"); },
+  get user() {
+    try { return JSON.parse(localStorage.getItem("niyora_user")); }
+    catch { return null; }
+  },
+  save(user, token) {
+    localStorage.setItem("niyora_token", token);
+    localStorage.setItem("niyora_user", JSON.stringify(user));
+  },
+  clear() {
+    localStorage.removeItem("niyora_token");
+    localStorage.removeItem("niyora_user");
+  },
+};
+
 async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}),
+      ...(options.headers || {}),
+    },
     ...options,
   });
   const text = await res.text();
   let data;
   try { data = text ? JSON.parse(text) : {}; } catch { data = { detail: text }; }
+  if (res.status === 401) {
+    auth.clear();
+    window.location.reload();
+    return;
+  }
   if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
   return data;
 }
@@ -21,8 +46,211 @@ const icons = {
   queue: "☷", analytics: "▥", help: "?", menu: "☰"
 };
 
+function Login({ onDone }) {
+  const [tab, setTab] = useState("login");
+  const [form, setForm] = useState({
+    name: "", email: "", password: "", role: "applicant",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      const path = tab === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body = tab === "login"
+        ? { email: form.email, password: form.password }
+        : form;
+      const data = await api(path, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      auth.save(data.user, data.token);
+      onDone(data.user);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-brand">
+          <div className="brand-mark">N</div>
+          <div><strong>Niyora</strong><span>Digital Twin</span></div>
+        </div>
+
+        <h1>{tab === "login" ? "Sign in" : "Create an account"}</h1>
+        <p className="login-sub">Maharashtra · Government service portal</p>
+
+        <div className="login-tabs">
+          <button className={tab === "login" ? "active" : ""}
+                  onClick={() => { setTab("login"); setError(""); }}>Sign in</button>
+          <button className={tab === "register" ? "active" : ""}
+                  onClick={() => { setTab("register"); setError(""); }}>Register</button>
+        </div>
+
+        {tab === "register" && (
+          <label className="form-row">
+            <span>Full name</span>
+            <input value={form.name}
+                   onChange={e => setForm({ ...form, name: e.target.value })}
+                   placeholder="Ravi Deshmukh" />
+          </label>
+        )}
+
+        <label className="form-row">
+          <span>Email</span>
+          <input type="email" value={form.email}
+                 onChange={e => setForm({ ...form, email: e.target.value })}
+                 placeholder="you@example.com" />
+        </label>
+
+        <label className="form-row">
+          <span>Password</span>
+          <input type="password" value={form.password}
+                 onChange={e => setForm({ ...form, password: e.target.value })}
+                 onKeyDown={e => e.key === "Enter" && submit()}
+                 placeholder="At least 6 characters" />
+        </label>
+
+        {tab === "register" && (
+          <label className="form-row">
+            <span>I am a</span>
+            <select value={form.role}
+                    onChange={e => setForm({ ...form, role: e.target.value })}>
+              <option value="applicant">Applicant / Entrepreneur</option>
+              <option value="officer">Department Officer</option>
+            </select>
+          </label>
+        )}
+
+        {error && <div className="login-error">! {error}</div>}
+
+        <button className="primary full" onClick={submit} disabled={busy}>
+          {busy ? "Please wait..." : tab === "login" ? "Sign in" : "Create account"}
+        </button>
+
+        <div className="login-foot">Secure government workflow · Role-based access</div>
+      </div>
+    </div>
+  );
+}
+function useOutsideClose(ref, onClose) {
+  useEffect(() => {
+    const handler = e => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [ref, onClose]);
+}
+function initials(name = "") {
+  return name.split(" ").filter(Boolean).slice(0, 2)
+             .map(w => w[0].toUpperCase()).join("") || "U";
+}
+
+function Bell() {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState(null);
+  const ref = useRef(null);
+  useOutsideClose(ref, () => setOpen(false)); 
+
+  useEffect(() => {
+    api("/api/notifications").then(setData).catch(() => {});
+  }, []);
+
+  return (
+    <div className="dropdown-wrap" ref={ref}>
+      <button className="icon-btn" title="Notifications" onClick={() => setOpen(!open)}>
+        ♢{data?.unread ? <i>{data.unread}</i> : null}
+      </button>
+      {open && (
+        <div className="dropdown">
+          <div className="dropdown-head">Notifications</div>
+          {data?.items?.length ? data.items.map(n => (
+            <div className={`notif ${n.level} ${n.read ? "read" : ""}`} key={n.id}>
+              <b>{n.title}</b>
+              <p>{n.message}</p>
+              <small>{new Date(n.at).toLocaleString("en-IN",
+                { dateStyle: "medium", timeStyle: "short" })}</small>
+            </div>
+          )) : <div className="notif"><p>No notifications yet.</p></div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserMenu({ user, onLogout, onProfile }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useOutsideClose(ref, () => setOpen(false));
+  return (
+    <div className="dropdown-wrap" ref={ref}>
+      <button className="user-chip" onClick={() => setOpen(!open)}>
+        <span className="avatar sm">{initials(user.name)}</span> {user.name}
+      </button>
+      {open && (
+        <div className="dropdown small">
+          <div className="dropdown-user">
+            <b>{user.name}</b>
+            <small>{user.email}</small>
+            <span className="badge blue">{user.role}</span>
+          </div>
+          <button className="dropdown-item" onClick={() => { setOpen(false); onProfile(); }}>View profile</button>   
+          <button className="dropdown-item danger" onClick={onLogout}>Sign out</button>     
+          </div>
+      )}
+    </div>
+  );
+}
+function Profile({ user, notify }) {
+  const [twin, setTwin] = useState(null);
+  useEffect(() => {
+    api("/api/twin/APP-2026-000417").then(setTwin).catch(() => {});
+  }, []);
+
+  return <>
+    <PageTitle eyebrow="MY ACCOUNT" title="Profile and documents" />
+    <div className="grid-2">
+      <div className="panel">
+        <div className="panel-head"><h3>Account details</h3></div>
+        <div className="profile-big">
+          <div className="avatar lg">{initials(user.name)}</div>
+          <div><b>{user.name}</b><small>{user.email}</small>
+            <span className="badge blue">{user.role === "officer" ? "Department officer" : "Applicant"}</span>
+          </div>
+        </div>
+        <div className="kv"><span>Full name</span><b>{user.name}</b></div>
+        <div className="kv"><span>Email</span><b>{user.email}</b></div>
+        <div className="kv"><span>Role</span><b>{user.role}</b></div>
+        <div className="kv"><span>Access</span><b>{user.role === "officer" ? "Queue, decisions, analytics" : "Applications and tracking"}</b></div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head"><h3>My documents</h3>
+          {twin && <span className="muted">
+            {twin.required_docs.filter(d => d.uploaded).length}/{twin.required_docs.length} uploaded
+          </span>}
+        </div>
+        {twin ? twin.required_docs.map(d => (
+          <div className="doc-row" key={d.doc_type}>
+            <span className={d.uploaded ? "doc-check uploaded" : "doc-check"}>{d.uploaded ? "✓" : "!"}</span>
+            <div><b>{d.label}</b><small>{d.uploaded ? "Uploaded" : "Required"}</small></div>
+            {!d.uploaded && <button className="mini">Upload</button>}
+          </div>
+        )) : <Empty text="No documents yet." />}
+      </div>
+    </div>
+  </>;
+}
 function App() {
-  const [mode, setMode] = useState("applicant");
+  const [user, setUser] = useState(auth.user);
+  const [mode, setMode] = useState(auth.user?.role || "applicant");
   const [page, setPage] = useState("dashboard");
   const [twinId, setTwinId] = useState("APP-2026-000417");
   const [toast, setToast] = useState(null);
@@ -31,7 +259,11 @@ function App() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
-
+  const logout = () => {
+    auth.clear();
+    setUser(null);
+    setPage("dashboard");
+  };
   const nav = mode === "applicant"
     ? [
         ["dashboard", "Overview"],
@@ -45,6 +277,7 @@ function App() {
         ["twin", "Application twin"],
         ["analytics", "Bottlenecks"],
       ];
+    if (!user) return <Login onDone={u => { setUser(u); setMode(u.role); }} />;
 
   return (
     <div className="app">
@@ -69,8 +302,7 @@ function App() {
 
         <div className="sidebar-bottom">
           <div className="secure">✓ <span>Secure government workflow</span></div>
-          <div className="profile"><div className="avatar">RD</div><div><b>{mode === "applicant" ? "Ravi Deshmukh" : "Officer console"}</b><small>{mode === "applicant" ? "Business applicant" : "Review officer"}</small></div></div>
-        </div>
+          <button className="profile as-button" onClick={() => setPage("profile")}><div className="avatar">{initials(user.name)}</div><div><b>{user.name}</b><small>{user.role === "officer" ? "Department officer" : "Applicant"}</small></div></button>        </div>
       </aside>
 
       <main className="main">
@@ -78,9 +310,8 @@ function App() {
           <div className="mobile-title"><span className="brand-mark small">N</span> Niyora</div>
           <div className="crumb">Maharashtra · Citizen Services</div>
           <div className="top-actions">
-            <button className="icon-btn" title="Notifications">♢<i>2</i></button>
-            <button className="user-chip"><span className="avatar sm">RD</span> Ravi Deshmukh</button>
-          </div>
+            <Bell notify={notify} />
+            <UserMenu user={user} onLogout={logout} onProfile={() => setPage("profile")} />          </div>
         </header>
 
         <div className="content">
@@ -90,6 +321,7 @@ function App() {
           {page === "twin" && <Twin twinId={twinId} setTwinId={setTwinId} mode={mode} notify={notify} />}
           {page === "queue" && <Queue setPage={setPage} setTwinId={setTwinId} notify={notify} />}
           {page === "analytics" && <Analytics />}
+          {page === "profile" && <Profile user={user} notify={notify} />}
         </div>
       </main>
 
@@ -338,3 +570,4 @@ function Loading(){return <div className="loading"><div className="spinner"></di
 function Empty({text}){return <div className="empty">{text}</div>}
 
 createRoot(document.getElementById("root")).render(<App />);
+
